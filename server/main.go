@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dustin-decker/grpc-firewall-bypass/api"
+	"github.com/hashicorp/yamux"
 	"google.golang.org/grpc"
 )
 
@@ -26,29 +27,35 @@ func main() {
 	defer ln.Close()
 
 	log.Println("waiting for incoming TCP connections...")
+	// Accept blocks until there is an incoming TCP connection
+	incoming, err := ln.Accept()
+	if err != nil {
+		log.Fatalf("couldn't accept %s", err)
+	}
 
+	incomingConn, err := yamux.Client(incoming, yamux.DefaultConfig())
+	if err != nil {
+		log.Fatalf("couldn't create yamux %s", err)
+	}
+
+	log.Println("starting a gRPC server over incoming TCP connection")
 	for {
-		// Accept blocks until there is an incoming TCP connection
-		incomingConn, connErr := ln.Accept()
-		log.Println("starting a gRPC server over incoming TCP connection")
+
 		var conn *grpc.ClientConn
 		// gRPC dial over incoming net.Conn
-		conn, err := grpc.Dial(":7777", grpc.WithInsecure(),
+		conn, err = grpc.Dial(":7777", grpc.WithInsecure(),
 			grpc.WithDialer(func(target string, timeout time.Duration) (net.Conn, error) {
-				return incomingConn, connErr
+				return incomingConn.Open()
 			}),
-			// grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			// 	Time:    time.Second * 30,
-			// 	Timeout: time.Second * 32,
-			// }),
-			// grpc.WithBlock(),
 		)
+
 		if err != nil {
 			log.Fatalf("did not connect: %s", err)
 		}
 
 		// handle connection in goroutine so we can accept new TCP connections
 		go handleConn(conn)
+		time.Sleep(3 * time.Second)
 	}
 }
 
