@@ -26,20 +26,20 @@ func main() {
 	}
 	defer ln.Close()
 
-	log.Println("waiting for incoming TCP connections...")
-	// Accept blocks until there is an incoming TCP connection
-	incoming, err := ln.Accept()
-	if err != nil {
-		log.Fatalf("couldn't accept %s", err)
-	}
-
-	incomingConn, err := yamux.Client(incoming, yamux.DefaultConfig())
-	if err != nil {
-		log.Fatalf("couldn't create yamux %s", err)
-	}
-
-	log.Println("starting a gRPC server over incoming TCP connection")
 	for {
+		log.Println("waiting for incoming TCP connections...")
+		// Accept blocks until there is an incoming TCP connection
+		incoming, err := ln.Accept()
+		if err != nil {
+			log.Fatalf("couldn't accept %s", err)
+		}
+
+		incomingConn, err := yamux.Client(incoming, yamux.DefaultConfig())
+		if err != nil {
+			log.Fatalf("couldn't create yamux %s", err)
+		}
+
+		log.Println("starting a gRPC server over incoming TCP connection")
 
 		var conn *grpc.ClientConn
 		// gRPC dial over incoming net.Conn
@@ -55,7 +55,6 @@ func main() {
 
 		// handle connection in goroutine so we can accept new TCP connections
 		go handleConn(conn)
-		time.Sleep(3 * time.Second)
 	}
 }
 
