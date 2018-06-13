@@ -57,8 +57,3 @@ protoc -I api/ \
     --go_out=plugins=grpc:api \
     api/api.proto
 ```
-
-### TODO
-
-- figure out why it repeats
-- add mTLS
